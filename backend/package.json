@@ -1,0 +1,33 @@
+{
+  "name": "family-rewards-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Backend for Family Rewards Telegram Mini App",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "cli": "tsx src/terminal/index.ts",
+    "seed": "tsx src/db/seed.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/static": "^9.0.0",
+    "@prisma/client": "^5.10.2",
+    "chalk": "^4.1.2",
+    "commander": "^12.0.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^5.6.2",
+    "grammy": "^1.20.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "prisma": "^5.10.2",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}

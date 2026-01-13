@@ -1,0 +1,16 @@
+{
+    "name": "Family Rewards",
+    "short_name": "Rewards",
+    "descritpion": "Family Rewards System",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#f8fafc",
+    "theme_color": "#f8fafc",
+    "icons": [
+        {
+            "src": "/vite.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
