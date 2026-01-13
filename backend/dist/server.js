@@ -11,11 +11,38 @@ await fastify.register(cors, {
     origin: true
 });
 // Serve static frontend files
+const staticPath = path.join(__dirname, '../../frontend/dist');
+console.log('Static file path calculated:', staticPath);
+try {
+    const fs = await import('fs');
+    if (fs.existsSync(staticPath)) {
+        console.log('Static directory exists. Contents:', fs.readdirSync(staticPath));
+    }
+    else {
+        console.error('⚠️ STATIC DIRECTORY DOES NOT EXIST AT:', staticPath);
+        // Fallback debug: list parent dirs to find where it is
+        const appPath = '/app';
+        if (fs.existsSync(appPath)) {
+            console.log('/app contents:', fs.readdirSync(appPath));
+            if (fs.existsSync('/app/frontend')) {
+                console.log('/app/frontend contents:', fs.readdirSync('/app/frontend'));
+            }
+            else {
+                console.log('/app/frontend does not exist');
+            }
+        }
+        else {
+            console.log('/app does not exist');
+        }
+    }
+}
+catch (e) {
+    console.error('Error checking static files:', e);
+}
 await fastify.register(fastifyStatic, {
-    root: path.join(__dirname, '../../frontend/dist'),
+    root: staticPath,
     prefix: '/',
 });
-console.log('Static file path:', path.join(__dirname, '../../frontend/dist'));
 fastify.get('/ping', async () => {
     return { status: 'ok', message: 'pong' };
 });
