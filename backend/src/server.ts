@@ -349,8 +349,12 @@ fastify.post('/api/purchases/:id/confirm', async (request, reply) => {
 const start = async () => {
     // Fallback for SPA
     fastify.setNotFoundHandler((req, reply) => {
-        if (req.raw.url && req.raw.url.startsWith('/api')) {
+        const url = req.raw.url || '';
+        if (url.startsWith('/api')) {
             reply.status(404).send({ error: 'API endpoint not found' });
+        } else if (url.includes('.env') || url.includes('.git') || url.includes('.json')) {
+            // Block sensitive-looking scans from hitting the SPA fallback
+            reply.status(404).send('Not Found');
         } else {
             reply.sendFile('index.html');
         }

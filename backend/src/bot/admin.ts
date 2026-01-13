@@ -23,8 +23,8 @@ interface AdminState {
         active: boolean;
         target: 'all' | 'parents' | 'children';
     };
-    addUserStep: 'none' | 'name' | 'id';
-    newUserData: { name?: string; id?: string };
+    addUserStep: 'none' | 'name' | 'id' | 'role';
+    newUserData: { name?: string; id?: string; role?: 'parent' | 'child' };
 }
 
 const state: AdminState = {
@@ -130,13 +130,13 @@ const startTunnel = async (ctx: Context, bot: Bot) => {
                 state.tunnelStatus = 'ACTIVE';
                 updateEnv(url);
                 syncGlobalMenuButton(ctx, url, bot);
-                renderDashboard(ctx).catch(() => { });
+                renderSystemMenu(ctx).catch(() => { }); // Refresh system menu
             }
         }
     };
     child.stderr?.on('data', handleOutput);
     child.stdout?.on('data', handleOutput);
-    setTimeout(() => { if (state.tunnelStatus === 'STARTING') renderDashboard(ctx).catch(() => { }); }, 5000);
+    setTimeout(() => { if (state.tunnelStatus === 'STARTING') renderSystemMenu(ctx).catch(() => { }); }, 5000);
 };
 
 const stopTunnel = async (ctx: Context) => {
@@ -147,18 +147,31 @@ const stopTunnel = async (ctx: Context) => {
     }
     state.tunnelStatus = 'INACTIVE';
     state.tunnelUrl = null;
-    await renderDashboard(ctx);
+    await renderSystemMenu(ctx);
 };
 
 // --- Views ---
 
 const renderDashboard = async (ctx: Context) => {
     const userCount = await prisma.user.count();
-    const tunnelIcon = state.tunnelStatus === 'ACTIVE' ? '🟢' : state.tunnelStatus === 'STARTING' ? '🟡' : '🔴';
-    const text = `<b>⚡ ПАНЕЛЬ УПРАВЛЕНИЯ</b>\n\n<b>📊 Состояние</b>\n• Время: <code>${getUptime()}</code>\n• Юзеры: <code>${userCount}</code>\n\n<b>📡 Туннель:</b> ${tunnelIcon}\n${state.tunnelUrl ? `• <a href="${state.tunnelUrl}">${state.tunnelUrl}</a>` : ''}`;
+    const tasksCompleted = await prisma.task.count({ where: { status: 'completed' } });
+    const pointsAgg = await prisma.user.aggregate({ _sum: { points: true } });
+    const totalPoints = pointsAgg._sum.points || 0;
 
+    const tunnelIcon = state.tunnelStatus === 'ACTIVE' ? '🟢' : state.tunnelStatus === 'STARTING' ? '🟡' : '🔴';
+
+    const text = `<b>⚡ ПАНЕЛЬ УПРАВЛЕНИЯ</b>\n\n` +
+        `⏳ <b>Система</b>\n` +
+        `• Аптайм: <code>${getUptime()}</code>\n` +
+        `• Юзеры: <code>${userCount}</code>\n\n` +
+        `🏆 <b>Активность</b>\n` +
+        `• Задания: <b>${tasksCompleted}</b>\n` +
+        `• Баллы: <b>${totalPoints}</b>\n\n` +
+        `<b>📡 Туннель:</b> ${tunnelIcon}\n` +
+        `${state.tunnelUrl ? `• <a href="${state.tunnelUrl}">${state.tunnelUrl}</a>` : ''}`;
+
+    // Main Menu 2x2
     const kb = new InlineKeyboard()
-        .text(state.tunnelStatus === 'ACTIVE' ? '🛑 СТОП Туннель' : '🚀 ПУСК Туннель', state.tunnelStatus === 'ACTIVE' ? 'admin_tunnel_stop' : 'admin_tunnel_start').row()
         .text('👥 Юзеры', 'admin_users').text('📢 Рассылка', 'admin_broadcast_menu').row()
         .text('👑 Админы', 'admin_users_admins').text('⚙️ Система', 'admin_system_menu').row();
 
@@ -170,11 +183,19 @@ const renderDashboard = async (ctx: Context) => {
 };
 
 const renderSystemMenu = async (ctx: Context) => {
+    // Tunnel button changes depending on status
+    const tunnelBtnText = state.tunnelStatus === 'ACTIVE' ? '🛑 СТОП Туннель' : '🚀 ПУСК Туннель';
+    const tunnelBtnAction = state.tunnelStatus === 'ACTIVE' ? 'admin_tunnel_stop' : 'admin_tunnel_start';
+
     const kb = new InlineKeyboard()
         .text('🔄 Обновить', 'admin_dashboard').text('☁️ Git Push', 'admin_git_push').row()
-        .text('🏗️ Build', 'admin_build').text('🔁 Рестарт', 'admin_restart').row()
+        .text('🏗️ Build', 'admin_build').text(tunnelBtnText, tunnelBtnAction).row()
         .text('🔙 Назад', 'admin_dashboard');
-    await ctx.editMessageText('⚙️ <b>СИСТЕМА</b>', { parse_mode: 'HTML', reply_markup: kb });
+
+    const tunnelIcon = state.tunnelStatus === 'ACTIVE' ? '🟢' : state.tunnelStatus === 'STARTING' ? '🟡' : '🔴';
+    const text = `⚙️ <b>СИСТЕМА</b>\n\nСтатус Туннеля: ${tunnelIcon}\nURL: ${state.tunnelUrl || 'Нет'}`;
+
+    await ctx.editMessageText(text, { parse_mode: 'HTML', reply_markup: kb });
 };
 
 const renderBroadcastMenu = async (ctx: Context) => {
@@ -209,7 +230,7 @@ const renderUserList = async (ctx: Context, page = 0, filter: 'all' | 'admin' = 
 const renderUserEdit = async (ctx: Context, userId: number) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return renderUserList(ctx);
-    const text = `👤 <b>${user.name}</b>\nID: <code>${user.telegramId}</code>\nБаллы: <b>${user.points}</b>`;
+    const text = `👤 <b>${user.name}</b>\nID: <code>${user.telegramId}</code>\nРоль: <b>${user.role}</b>\nБаллы: <b>${user.points}</b>`;
     const kb = new InlineKeyboard()
         .text('-10', `admin_pts_${userId}_-10`).text('-1', `admin_pts_${userId}_-1`).text('+1', `admin_pts_${userId}_1`).text('+10', `admin_pts_${userId}_10`).row()
         .text(user.isAdmin ? '⬇️ Снять Админа' : '⬆️ Сделать Админом', `admin_prom_${userId}_${user.isAdmin ? 'user' : 'admin'}`).row()
@@ -220,7 +241,6 @@ const renderUserEdit = async (ctx: Context, userId: number) => {
 const executeCommand = async (ctx: Context, command: string, title: string) => {
     await ctx.editMessageText(`⏳ <b>${title}...</b>`, { parse_mode: 'HTML' });
     exec(command, { cwd: ROOT_DIR }, async (err, stdout, stderr) => {
-        // Git writes warnings to stderr, so we only treat it as an error if the process actually failed (err)
         const isActuallyError = !!err;
         const res = isActuallyError ? `❌ Ошибка:\n${stderr || err.message}` : `✅ Успешно:\n${stdout || stderr}`;
         const kb = new InlineKeyboard().text('🔙 Назад', 'admin_system_menu');
@@ -228,25 +248,10 @@ const executeCommand = async (ctx: Context, command: string, title: string) => {
     });
 };
 
-const restartServer = async (ctx: Context, bot: Bot) => {
-    await ctx.reply('👋 <b>Рестарт...</b>\n\nОкно откроется через 3 сек.', { parse_mode: 'HTML' });
-    const args = ['/c', 'start', 'cmd.exe', '/k', 'ping 127.0.0.1 -n 4 > nul && node dist/index.js'];
-    const child = spawn('cmd.exe', args, { cwd: path.resolve(__dirname, '../../'), detached: true, stdio: 'ignore', windowsHide: false });
-    child.unref();
-
-    try {
-        const stop = bot.stop();
-        const timeout = new Promise(r => setTimeout(r, 1000));
-        await Promise.race([stop, timeout]);
-    } catch { }
-    process.exit(0);
-};
-
 // --- Router ---
 
 export const registerAdmin = (bot: Bot, adminIds: string[]) => {
 
-    // Safety check for all admin requests
     const checkAccess = async (ctx: Context) => {
         const id = ctx.from?.id.toString();
         if (!id) return false;
@@ -264,7 +269,6 @@ export const registerAdmin = (bot: Bot, adminIds: string[]) => {
     });
 
     bot.on('message:text', async (ctx, next) => {
-        // Only trigger if an admin flow is active
         if (!state.broadcastState.active && state.addUserStep === 'none') return next();
         if (!await checkAccess(ctx)) return next();
 
@@ -284,11 +288,9 @@ export const registerAdmin = (bot: Bot, adminIds: string[]) => {
             return ctx.reply('👤 ID пользователя?');
         }
         if (state.addUserStep === 'id') {
-            try {
-                await prisma.user.create({ data: { name: state.newUserData.name!, telegramId: text, role: 'child' } });
-                state.addUserStep = 'none';
-                return ctx.reply('✅ Добавлен!', { reply_markup: new InlineKeyboard().text('👥 Список', 'admin_users') });
-            } catch { state.addUserStep = 'none'; return ctx.reply('❌ Ошибка (ID занят)'); }
+            state.newUserData.id = text; state.addUserStep = 'role';
+            const kb = new InlineKeyboard().text('👑 Родитель', 'admin_role_parent').text('👶 Ребенок', 'admin_role_child');
+            return ctx.reply('🎭 Выберите роль:', { reply_markup: kb });
         }
         return next();
     });
@@ -304,7 +306,6 @@ export const registerAdmin = (bot: Bot, adminIds: string[]) => {
         if (data === 'admin_system_menu') return renderSystemMenu(ctx);
         if (data === 'admin_git_push') return executeCommand(ctx, 'git add . && git commit -m "Update" && git push', 'Git Push');
         if (data === 'admin_build') return executeCommand(ctx, 'npm run build', 'Build');
-        if (data === 'admin_restart') return restartServer(ctx, bot);
         if (data === 'admin_broadcast_menu') return renderBroadcastMenu(ctx);
         if (data.startsWith('admin_broadcast_ask_')) {
             state.broadcastState = { active: true, target: data.split('_')[3] as any };
@@ -314,6 +315,24 @@ export const registerAdmin = (bot: Bot, adminIds: string[]) => {
         if (data === 'admin_users_admins') return renderUserList(ctx, 0, 'admin');
         if (data === 'admin_user_add_start') {
             state.addUserStep = 'name'; return ctx.editMessageText('👤 <b>Имя юзера?</b>', { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('🔙 Отмена', 'admin_users') });
+        }
+        // Handle Role Selection
+        if (data === 'admin_role_parent' || data === 'admin_role_child') {
+            const role = data === 'admin_role_parent' ? 'parent' : 'child';
+            try {
+                await prisma.user.create({
+                    data: {
+                        name: state.newUserData.name!,
+                        telegramId: state.newUserData.id!,
+                        role: role
+                    }
+                });
+                state.addUserStep = 'none';
+                return ctx.editMessageText(`✅ <b>${state.newUserData.name}</b> добавлен как ${role === 'parent' ? '👑' : '👶'}!`, { parse_mode: 'HTML', reply_markup: new InlineKeyboard().text('👥 Список', 'admin_users') });
+            } catch {
+                state.addUserStep = 'none';
+                return ctx.editMessageText('❌ Ошибка (ID занят)', { reply_markup: new InlineKeyboard().text('🔙 Назад', 'admin_users') });
+            }
         }
         if (data.startsWith('admin_users_page_')) {
             const p = data.split('_'); return renderUserList(ctx, parseInt(p[3]), p[4] as any);
