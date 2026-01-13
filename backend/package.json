@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && node -e \"import fs from 'fs'; fs.cpSync('src/generated-client', 'dist/generated-client', {recursive: true})\" --input-type=module",
+    "build": "tsc && node -e \"import fs from 'fs'; fs.cpSync('src/generated-client', 'dist/generated-client', {recursive: true}); fs.copyFileSync('prisma/dev.db', 'dist/generated-client/dev.db');\" --input-type=module",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
