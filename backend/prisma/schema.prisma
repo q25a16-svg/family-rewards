@@ -1,7 +1,7 @@
 generator client {
   provider      = "prisma-client-js"
   output        = "./generated-client"
-  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+  binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "linux-musl", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -13,7 +13,7 @@ model User {
   id         Int      @id @default(autoincrement())
   telegramId String   @unique
   name       String
-  role       String   @default("child") // "parent" | "child"
+  role       String   @default("child")
   points     Int      @default(0)
   createdAt  DateTime @default(now())
   tasks      Task[]   @relation("AssignedTasks")
@@ -25,7 +25,7 @@ model Task {
   title       String
   description String
   reward      Int
-  status      String   @default("active") // "active" | "pending" | "completed"
+  status      String   @default("active")
   assignee    User?    @relation("AssignedTasks", fields: [assigneeId], references: [id])
   assigneeId  Int?
   isGlobal    Boolean  @default(false)
@@ -48,6 +48,6 @@ model Purchase {
   userId    Int
   item      StoreItem @relation(fields: [itemId], references: [id])
   itemId    Int
-  status    String   @default("bought") // "bought" | "received"
+  status    String   @default("bought")
   createdAt DateTime @default(now())
 }

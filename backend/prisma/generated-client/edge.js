@@ -166,7 +166,15 @@ const config = {
       },
       {
         "fromEnvVar": null,
+        "value": "debian-openssl-1.1.x"
+      },
+      {
+        "fromEnvVar": null,
         "value": "debian-openssl-3.0.x"
+      },
+      {
+        "fromEnvVar": null,
+        "value": "linux-musl"
       },
       {
         "fromEnvVar": null,
@@ -196,8 +204,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider      = \"prisma-client-js\"\n  output        = \"./generated-client\"\n  binaryTargets = [\"native\", \"debian-openssl-3.0.x\", \"linux-musl-openssl-3.0.x\"]\n}\n\ndatasource db {\n  provider = \"sqlite\"\n  url      = \"file:./dev.db\"\n}\n\nmodel User {\n  id         Int        @id @default(autoincrement())\n  telegramId String     @unique\n  name       String\n  role       String     @default(\"child\") // \"parent\" | \"child\"\n  points     Int        @default(0)\n  createdAt  DateTime   @default(now())\n  tasks      Task[]     @relation(\"AssignedTasks\")\n  purchases  Purchase[]\n}\n\nmodel Task {\n  id          Int      @id @default(autoincrement())\n  title       String\n  description String\n  reward      Int\n  status      String   @default(\"active\") // \"active\" | \"pending\" | \"completed\"\n  assignee    User?    @relation(\"AssignedTasks\", fields: [assigneeId], references: [id])\n  assigneeId  Int?\n  isGlobal    Boolean  @default(false)\n  createdAt   DateTime @default(now())\n}\n\nmodel StoreItem {\n  id          Int        @id @default(autoincrement())\n  title       String\n  description String\n  price       Int\n  icon        String?\n  createdAt   DateTime   @default(now())\n  purchases   Purchase[]\n}\n\nmodel Purchase {\n  id        Int       @id @default(autoincrement())\n  user      User      @relation(fields: [userId], references: [id])\n  userId    Int\n  item      StoreItem @relation(fields: [itemId], references: [id])\n  itemId    Int\n  status    String    @default(\"bought\") // \"bought\" | \"received\"\n  createdAt DateTime  @default(now())\n}\n",
-  "inlineSchemaHash": "95c7a54c64b7437ef6166feaea135e7999ba648fb19ef816bcc4129e7d5f7c08",
+  "inlineSchema": "generator client {\n  provider      = \"prisma-client-js\"\n  output        = \"./generated-client\"\n  binaryTargets = [\"native\", \"debian-openssl-1.1.x\", \"debian-openssl-3.0.x\", \"linux-musl\", \"linux-musl-openssl-3.0.x\"]\n}\n\ndatasource db {\n  provider = \"sqlite\"\n  url      = \"file:./dev.db\"\n}\n\nmodel User {\n  id         Int        @id @default(autoincrement())\n  telegramId String     @unique\n  name       String\n  role       String     @default(\"child\")\n  points     Int        @default(0)\n  createdAt  DateTime   @default(now())\n  tasks      Task[]     @relation(\"AssignedTasks\")\n  purchases  Purchase[]\n}\n\nmodel Task {\n  id          Int      @id @default(autoincrement())\n  title       String\n  description String\n  reward      Int\n  status      String   @default(\"active\")\n  assignee    User?    @relation(\"AssignedTasks\", fields: [assigneeId], references: [id])\n  assigneeId  Int?\n  isGlobal    Boolean  @default(false)\n  createdAt   DateTime @default(now())\n}\n\nmodel StoreItem {\n  id          Int        @id @default(autoincrement())\n  title       String\n  description String\n  price       Int\n  icon        String?\n  createdAt   DateTime   @default(now())\n  purchases   Purchase[]\n}\n\nmodel Purchase {\n  id        Int       @id @default(autoincrement())\n  user      User      @relation(fields: [userId], references: [id])\n  userId    Int\n  item      StoreItem @relation(fields: [itemId], references: [id])\n  itemId    Int\n  status    String    @default(\"bought\")\n  createdAt DateTime  @default(now())\n}\n",
+  "inlineSchemaHash": "4a7e6a1f9ecb7e6912b0e424fd045912b879913c6d8ceb62d3f99d1d82f1b096",
   "copyEngine": true
 }
 config.dirname = '/'
