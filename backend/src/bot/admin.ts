@@ -220,7 +220,9 @@ const renderUserEdit = async (ctx: Context, userId: number) => {
 const executeCommand = async (ctx: Context, command: string, title: string) => {
     await ctx.editMessageText(`⏳ <b>${title}...</b>`, { parse_mode: 'HTML' });
     exec(command, { cwd: ROOT_DIR }, async (err, stdout, stderr) => {
-        const res = err ? `❌ Ошибка:\n${stderr || err.message}` : `✅ Ок:\n${stdout}`;
+        // Git writes warnings to stderr, so we only treat it as an error if the process actually failed (err)
+        const isActuallyError = !!err;
+        const res = isActuallyError ? `❌ Ошибка:\n${stderr || err.message}` : `✅ Успешно:\n${stdout || stderr}`;
         const kb = new InlineKeyboard().text('🔙 Назад', 'admin_system_menu');
         await ctx.reply(`<pre>${res.substring(0, 1000)}</pre>`, { parse_mode: 'HTML', reply_markup: kb }).catch(() => { });
     });
