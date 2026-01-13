@@ -42,7 +42,9 @@ RUN npm install --omit=dev
 WORKDIR /app/backend
 RUN npm install --omit=dev
 # Generate Prisma client for the correct architecture
-RUN npx prisma generate
+RUN npx prisma generate && \
+    mkdir -p dist/generated-client && \
+    cp -r src/generated-client/* dist/generated-client/
 
 WORKDIR /app
 

@@ -11,7 +11,13 @@ const __dirname = path.dirname(__filename);
 const fastify = Fastify({ logger: true });
 
 await fastify.register(cors, {
-    origin: true
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true
+});
+
+fastify.get('/api/health', async () => {
+    return { status: 'ok', time: new Date().toISOString() };
 });
 
 // Log all requests

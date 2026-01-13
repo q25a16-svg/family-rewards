@@ -6,7 +6,14 @@ import prisma from './db/client.js';
 const token = process.env.BOT_TOKEN;
 if (!token) throw new Error('BOT_TOKEN is required');
 
+import { registerAdmin } from './bot/admin.js';
+
 const bot = new Bot(token);
+
+// Register Admin Module
+// Hardcoded Super Admin ID: 7409320181 (Max Payne)
+// registerAdmin moved to bottom
+
 
 bot.command('start', async (ctx) => {
     const tgId = ctx.from?.id.toString();
@@ -35,6 +42,10 @@ bot.command('start', async (ctx) => {
 });
 
 // Error handling
+// Register Admin Module LAST to avoid blocking other commands
+// Hardcoded Super Admin ID: 7409320181 (Max Payne)
+registerAdmin(bot, ['7409320181']);
+
 bot.catch((err) => {
     const ctx = err.ctx;
     console.error(`Error while handling update ${ctx.update.update_id}:`);

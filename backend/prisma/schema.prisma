@@ -1,7 +1,7 @@
 generator client {
   provider      = "prisma-client-js"
   output        = "../src/generated-client"
-  binaryTargets = ["native", "windows", "linux-musl-openssl-3.0.x"]
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -14,6 +14,7 @@ model User {
   telegramId String   @unique
   name       String
   role       String   @default("child")
+  isAdmin    Boolean  @default(false)
   points     Int      @default(0)
   createdAt  DateTime @default(now())
   tasks      Task[]   @relation("AssignedTasks")
