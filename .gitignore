@@ -4,3 +4,5 @@ backend/prisma/dev.db
 backend/prisma/dev.db-journal
 .DS_Store
 *.log
+
+!backend/prisma/generated-client/
