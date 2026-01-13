@@ -167,6 +167,10 @@ const config = {
       },
       {
         "fromEnvVar": null,
+        "value": "windows"
+      },
+      {
+        "fromEnvVar": null,
         "value": "linux-musl-openssl-3.0.x"
       }
     ],
@@ -175,7 +179,8 @@ const config = {
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null
+    "rootEnvPath": null,
+    "schemaEnvPath": "../../.env"
   },
   "relativePath": "../../prisma",
   "clientVersion": "5.22.0",
@@ -184,7 +189,6 @@ const config = {
     "db"
   ],
   "activeProvider": "sqlite",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
@@ -193,8 +197,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider      = \"prisma-client-js\"\n  output        = \"../src/generated-client\"\n  binaryTargets = [\"native\", \"linux-musl-openssl-3.0.x\"]\n}\n\ndatasource db {\n  provider = \"sqlite\"\n  url      = \"file:./dev.db\"\n}\n\nmodel User {\n  id         Int        @id @default(autoincrement())\n  telegramId String     @unique\n  name       String\n  role       String     @default(\"child\")\n  points     Int        @default(0)\n  createdAt  DateTime   @default(now())\n  tasks      Task[]     @relation(\"AssignedTasks\")\n  purchases  Purchase[]\n}\n\nmodel Task {\n  id          Int      @id @default(autoincrement())\n  title       String\n  description String\n  reward      Int\n  status      String   @default(\"active\")\n  assignee    User?    @relation(\"AssignedTasks\", fields: [assigneeId], references: [id])\n  assigneeId  Int?\n  isGlobal    Boolean  @default(false)\n  createdAt   DateTime @default(now())\n}\n\nmodel StoreItem {\n  id          Int        @id @default(autoincrement())\n  title       String\n  description String\n  price       Int\n  icon        String?\n  createdAt   DateTime   @default(now())\n  purchases   Purchase[]\n}\n\nmodel Purchase {\n  id        Int       @id @default(autoincrement())\n  user      User      @relation(fields: [userId], references: [id])\n  userId    Int\n  item      StoreItem @relation(fields: [itemId], references: [id])\n  itemId    Int\n  status    String    @default(\"bought\")\n  createdAt DateTime  @default(now())\n}\n",
-  "inlineSchemaHash": "2a51d43fe268c9e23480f54025fb63759181cfaa4f4fb49044079b4e0b4bc95c",
+  "inlineSchema": "generator client {\n  provider      = \"prisma-client-js\"\n  output        = \"../src/generated-client\"\n  binaryTargets = [\"native\", \"windows\", \"linux-musl-openssl-3.0.x\"]\n}\n\ndatasource db {\n  provider = \"sqlite\"\n  url      = \"file:./dev.db\"\n}\n\nmodel User {\n  id         Int        @id @default(autoincrement())\n  telegramId String     @unique\n  name       String\n  role       String     @default(\"child\")\n  points     Int        @default(0)\n  createdAt  DateTime   @default(now())\n  tasks      Task[]     @relation(\"AssignedTasks\")\n  purchases  Purchase[]\n}\n\nmodel Task {\n  id          Int      @id @default(autoincrement())\n  title       String\n  description String\n  reward      Int\n  status      String   @default(\"active\")\n  assignee    User?    @relation(\"AssignedTasks\", fields: [assigneeId], references: [id])\n  assigneeId  Int?\n  isGlobal    Boolean  @default(false)\n  createdAt   DateTime @default(now())\n}\n\nmodel StoreItem {\n  id          Int        @id @default(autoincrement())\n  title       String\n  description String\n  price       Int\n  icon        String?\n  createdAt   DateTime   @default(now())\n  purchases   Purchase[]\n}\n\nmodel Purchase {\n  id        Int       @id @default(autoincrement())\n  user      User      @relation(fields: [userId], references: [id])\n  userId    Int\n  item      StoreItem @relation(fields: [itemId], references: [id])\n  itemId    Int\n  status    String    @default(\"bought\")\n  createdAt DateTime  @default(now())\n}\n",
+  "inlineSchemaHash": "5195f196316fe897bf5eeaa9abb3178b8bfefbbe706ac7b2e1e2ea19e02b1b44",
   "copyEngine": true
 }
 
@@ -203,8 +207,8 @@ const fs = require('fs')
 config.dirname = __dirname
 if (!fs.existsSync(path.join(__dirname, 'schema.prisma'))) {
   const alternativePaths = [
-    "backend/src/generated-client",
     "src/generated-client",
+    "generated-client",
   ]
   
   const alternativePath = alternativePaths.find((altPath) => {
@@ -233,11 +237,11 @@ Object.assign(exports, Prisma)
 
 // file annotations for bundling tools to include these files
 path.join(__dirname, "query_engine-windows.dll.node");
-path.join(process.cwd(), "backend/src/generated-client/query_engine-windows.dll.node")
+path.join(process.cwd(), "src/generated-client/query_engine-windows.dll.node")
 
 // file annotations for bundling tools to include these files
 path.join(__dirname, "libquery_engine-linux-musl-openssl-3.0.x.so.node");
-path.join(process.cwd(), "backend/src/generated-client/libquery_engine-linux-musl-openssl-3.0.x.so.node")
+path.join(process.cwd(), "src/generated-client/libquery_engine-linux-musl-openssl-3.0.x.so.node")
 // file annotations for bundling tools to include these files
 path.join(__dirname, "schema.prisma");
-path.join(process.cwd(), "backend/src/generated-client/schema.prisma")
+path.join(process.cwd(), "src/generated-client/schema.prisma")

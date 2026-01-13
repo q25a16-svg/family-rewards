@@ -1,7 +1,11 @@
-node_modules
+node_modules/
+**/node_modules/
 .env
+**/.env
+**/.env.local
+backend/dist/
+frontend/dist/
 backend/prisma/dev.db-journal
 .DS_Store
 *.log
-
 !backend/prisma/generated-client/

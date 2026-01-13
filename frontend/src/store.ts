@@ -48,6 +48,7 @@ interface AppState {
     fetchFamilyMembers: () => Promise<void>;
     fetchUserHistory: (tgId: string) => Promise<void>;
     fetchPendingPurchases: () => Promise<void>;
+    syncData: (tgId: string) => Promise<void>;
 
     // Child Actions
     takeTask: (taskId: number, tgId: string) => Promise<void>;
@@ -146,6 +147,22 @@ export const useStore = create<AppState>((set, get) => ({
             console.error(e);
         }
     },
+    syncData: async (tgId) => {
+        try {
+            const res = await fetch(`${API_URL}/sync?tgId=${tgId}`);
+            if (!res.ok) throw new Error('Sync failed');
+            const { tasks, familyStats, pendingPurchases, userPoints } = await res.json();
+
+            set(state => ({
+                tasks: Array.isArray(tasks) ? tasks : state.tasks,
+                familyStats: Array.isArray(familyStats) ? familyStats : state.familyStats,
+                pendingPurchases: Array.isArray(pendingPurchases) ? pendingPurchases : state.pendingPurchases,
+                user: state.user ? { ...state.user, points: userPoints } : state.user
+            }));
+        } catch (e) {
+            console.error('Sync Error:', e);
+        }
+    },
 
     fetchTasks: async (tgId) => {
         try {
@@ -184,56 +201,39 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tgId })
             });
-            // Background sync
-            get().fetchTasks(tgId);
-            get().fetchUser(tgId);
+            // Global sync
+            get().syncData(tgId);
         } catch (e) {
             console.error(e);
-            get().fetchTasks(tgId); // Revert on error
+            get().syncData(tgId); // Revert on error
         }
     },
 
     submitTask: async (taskId) => {
+        const user = get().user;
+        if (!user) return;
+
         // Optimistic update
         set((state) => ({
             tasks: state.tasks.map(t => t.id === taskId ? { ...t, status: 'pending' } : t)
         }));
 
         try {
-            console.log('Filing submission for task:', taskId);
-            // Sending empty JSON object to satisfy strict Fastify content-type requirements
             const res = await fetch(`${API_URL}/tasks/${taskId}/submit`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})
             });
-            if (!res.ok) {
-                let errorMessage = `Status: ${res.status}`;
-                try {
-                    const errData = await res.json();
-                    // Fastify returns { message: "...", error: "..." }. Message is usually more specific.
-                    errorMessage = errData.message || errData.error || errorMessage;
-                } catch {
-                    errorMessage = await res.text() || errorMessage;
-                }
-                throw new Error(errorMessage);
-            }
-            const data = await res.json();
-            console.log('Submission result:', data);
-
-            const user = get().user;
-            if (user) await get().fetchTasks(user.telegramId);
+            if (!res.ok) throw new Error('Submission failed');
+            await get().syncData(user.telegramId);
         } catch (e) {
             console.error('Submit task error:', e);
-            // Revert state on error by fetching
-            const user = get().user;
-            if (user) get().fetchTasks(user.telegramId);
+            get().syncData(user.telegramId);
             throw e;
         }
     },
 
     buyItem: async (itemId, tgId) => {
-        // Optimistic points deduction
         const state = get();
         const item = state.shopItems.find(i => i.id === itemId);
         if (state.user && item) {
@@ -246,15 +246,11 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ itemId, userTgId: tgId })
             });
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Buy failed');
-            }
-            await get().fetchUser(tgId);
-            await get().fetchUserHistory(tgId);
+            if (!res.ok) throw new Error('Buy failed');
+            await get().syncData(tgId);
         } catch (e) {
             console.error(e);
-            get().fetchUser(tgId); // Revert on error
+            get().syncData(tgId);
             throw e;
         }
     },
@@ -266,12 +262,8 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({})
             });
-            if (!res.ok) {
-                const text = await res.text();
-                throw new Error(text || 'Server error');
-            }
-            await get().fetchPendingPurchases();
-            await get().fetchFamilyStats();
+            if (!res.ok) throw new Error('Confirm failed');
+            await get().syncData(parentTgId);
         } catch (e) {
             console.error(e);
             throw e;
@@ -286,7 +278,7 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...data, creatorTgId })
             });
-            get().fetchTasks(creatorTgId);
+            get().syncData(creatorTgId);
         } catch (e) {
             console.error(e);
         }
@@ -299,33 +291,27 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            get().fetchTasks(tgId);
+            get().syncData(tgId);
         } catch (e) {
             console.error(e);
         }
     },
 
     deleteTask: async (taskId, tgId) => {
-        // Optimistic delete
         set((state) => ({ tasks: state.tasks.filter(t => t.id !== taskId) }));
-
         try {
             await fetch(`${API_URL}/tasks/${taskId}`, { method: 'DELETE' });
-            // Background sync
-            get().fetchTasks(tgId);
+            get().syncData(tgId);
         } catch (e) {
             console.error(e);
-            get().fetchTasks(tgId); // Revert
+            get().syncData(tgId);
         }
     },
 
     verifyTask: async (taskId, approve, parentTgId) => {
-        // Optimistic update
         set((state) => ({
             tasks: state.tasks.map(t =>
-                t.id === taskId
-                    ? { ...t, status: approve ? 'completed' : 'active' }
-                    : t
+                t.id === taskId ? { ...t, status: approve ? 'completed' : 'active' } : t
             )
         }));
 
@@ -335,11 +321,10 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ approve, parentTgId })
             });
-            get().fetchTasks(parentTgId);
-            get().fetchFamilyStats();
+            get().syncData(parentTgId);
         } catch (e) {
             console.error(e);
-            get().fetchTasks(parentTgId); // Revert
+            get().syncData(parentTgId);
         }
     },
 
@@ -350,6 +335,7 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...data, creatorTgId: tgId })
             });
+            get().syncData(tgId);
             get().fetchShop();
         } catch (e) {
             console.error(e);
@@ -363,6 +349,7 @@ export const useStore = create<AppState>((set, get) => ({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
+            get().syncData(tgId);
             get().fetchShop();
         } catch (e) {
             console.error(e);
@@ -372,6 +359,7 @@ export const useStore = create<AppState>((set, get) => ({
     deleteShopItem: async (itemId, tgId) => {
         try {
             await fetch(`${API_URL}/shop/${itemId}`, { method: 'DELETE' });
+            get().syncData(tgId);
             get().fetchShop();
         } catch (e) {
             console.error(e);

@@ -1,0 +1,16 @@
+node_modules
+frontend/node_modules
+backend/node_modules
+frontend/dist
+backend/dist
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+.git
+.vscode
+.env
+backend/.env
+frontend/.env
+*.ps1
+*.lnk
+assets/branding
+brain

@@ -41,22 +41,23 @@ function App() {
     const {
         user, tasks, shopItems, familyStats, familyMembers, userHistory, loading, pendingPurchases,
         fetchUser, fetchTasks, fetchShop, fetchFamilyStats, fetchFamilyMembers, fetchUserHistory, fetchPendingPurchases,
+        syncData,
         submitTask, takeTask, buyItem, confirmPurchase,
         createTask, deleteTask, verifyTask,
         createShopItem, deleteShopItem,
         addToast
     } = useStore();
 
+    const fallbackId = '7409320181';
+
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
-        const fallbackId = '7409320181';
 
         const load = async () => {
             let id = fallbackId;
             if (tg) {
                 tg.expand();
                 tg.ready();
-                // Check version for color support (v6.1+)
                 if (parseFloat(tg.version) >= 6.1) {
                     tg.setHeaderColor('#a8edea');
                     tg.setBackgroundColor('#fed6e3');
@@ -64,21 +65,19 @@ function App() {
                 id = tg.initDataUnsafe?.user?.id?.toString() || fallbackId;
             }
             await fetchUser(id);
-            await fetchTasks(id);
+            await syncData(id);
             await fetchShop();
-            await fetchFamilyStats();
             await fetchFamilyMembers();
         };
         load();
 
         const pollId = setInterval(() => {
             const id = tg?.initDataUnsafe?.user?.id?.toString() || fallbackId;
-            fetchTasks(id);
-            fetchFamilyStats();
-        }, 15000);
+            syncData(id);
+        }, 5000);
 
         return () => clearInterval(pollId);
-    }, []);
+    }, [syncData, fetchUser, fetchShop, fetchFamilyMembers]);
 
     const handleTaskAction = async (taskId: number, action: string) => {
         if (!user) return;

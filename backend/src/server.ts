@@ -61,6 +61,45 @@ fastify.get('/', async (req, reply) => {
     return reply.sendFile('index.html');
 });
 
+// --- Sync Logic (Real-time) ---
+fastify.get('/api/sync', async (request, reply) => {
+    const { tgId } = request.query as { tgId: string };
+    const user = await prisma.user.findUnique({ where: { telegramId: tgId } });
+    if (!user) return reply.status(404).send({ error: 'User not found' });
+
+    const [tasks, familyStats, pendingPurchases] = await Promise.all([
+        // Tasks for the specific user context
+        user.role === 'parent'
+            ? prisma.task.findMany({ include: { assignee: true }, orderBy: { id: 'desc' } })
+            : prisma.task.findMany({
+                where: {
+                    OR: [{ assigneeId: user.id }, { isGlobal: true, status: 'active' }],
+                    status: { in: ['active', 'in_progress', 'pending'] }
+                },
+                orderBy: { id: 'desc' }
+            }),
+        // Family stats for progress tracking
+        prisma.user.findMany({
+            where: { role: 'child' },
+            include: { tasks: { where: { status: 'completed' } }, purchases: true }
+        }).then(users => users.map(u => ({
+            id: u.id, name: u.name, telegramId: u.telegramId, points: u.points,
+            completedTasks: u.tasks.length, purchasesCount: u.purchases.length
+        }))),
+        // Global pending purchases for parent badges
+        user.role === 'parent'
+            ? prisma.purchase.findMany({ where: { status: 'ordered' }, include: { user: true, item: true }, orderBy: { createdAt: 'desc' } })
+            : []
+    ]);
+
+    return {
+        tasks,
+        familyStats,
+        pendingPurchases,
+        userPoints: user.points // Always keep points in sync
+    };
+});
+
 // --- User Logic ---
 fastify.get('/api/user/:tgId', async (request, reply) => {
     const { tgId } = request.params as { tgId: string };
