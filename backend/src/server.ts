@@ -14,6 +14,11 @@ await fastify.register(cors, {
     origin: true
 });
 
+// Log all requests
+fastify.addHook('onRequest', async (request, reply) => {
+    console.log(`📥 INCOMING REQUEST: ${request.method} ${request.url}`);
+});
+
 // Serve static frontend files
 const staticPath = path.join(__dirname, '../../frontend/dist');
 console.log('Static file path calculated:', staticPath);
