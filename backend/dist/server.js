@@ -15,6 +15,13 @@ await fastify.register(fastifyStatic, {
     root: path.join(__dirname, '../../frontend/dist'),
     prefix: '/',
 });
+console.log('Static file path:', path.join(__dirname, '../../frontend/dist'));
+fastify.get('/ping', async () => {
+    return { status: 'ok', message: 'pong' };
+});
+fastify.get('/', async (req, reply) => {
+    return reply.sendFile('index.html');
+});
 // --- User Logic ---
 fastify.get('/api/user/:tgId', async (request, reply) => {
     const { tgId } = request.params;
