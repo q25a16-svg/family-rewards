@@ -11,15 +11,53 @@ import { registerAdmin } from './bot/admin.js';
 const bot = new Bot(token);
 
 // Register Admin Module
-// Hardcoded Super Admin ID: 7409320181 (Max Payne)
-// registerAdmin moved to bottom
+// Standard register without hardcoded IDs - relies on DB IsAdmin flag
+const adminIds: string[] = [];
+
+// --- First Run Initialization Middleware ---
+bot.use(async (ctx, next) => {
+    // Only check for text messages in private chats
+    if (ctx.chat?.type !== 'private' || !ctx.message?.text) return next();
+
+    // Check if system is already initialized
+    const userCount = await prisma.user.count();
+    if (userCount > 0) return next();
+
+    const text = ctx.message.text.trim();
+    if (text === '/start') {
+        return ctx.reply('🚀 <b>Первый запуск системы!</b>\n\nБаза данных пуста. Пожалуйста, введите код инициализации администратора:', { parse_mode: 'HTML' });
+    }
+
+    if (text === '2604') {
+        try {
+            const userId = ctx.from?.id.toString();
+            if (!userId) return ctx.reply('❌ Не удалось определить ваш ID.');
+
+            await prisma.user.create({
+                data: {
+                    name: ctx.from?.first_name || 'Admin',
+                    telegramId: userId,
+                    role: 'parent',
+                    isAdmin: true,
+                    points: 999
+                }
+            });
+            await ctx.reply(`✅ <b>Система инициализирована!</b>\n\nВы (${ctx.from?.first_name}) назначены Супер-Администратором.\nНажмите /admin для входа в панель.`, { parse_mode: 'HTML' });
+        } catch (e) {
+            console.error(e);
+            await ctx.reply('❌ Ошибка при создании администратора.');
+        }
+    } else {
+        await ctx.reply('⛔ <b>Неверный код!</b>\nПовторите попытку:', { parse_mode: 'HTML' });
+    }
+});
 
 
 bot.command('start', async (ctx) => {
     const tgId = ctx.from?.id.toString();
     if (!tgId) return;
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
         where: { telegramId: tgId }
     });
 
@@ -43,8 +81,7 @@ bot.command('start', async (ctx) => {
 
 // Error handling
 // Register Admin Module LAST to avoid blocking other commands
-// Hardcoded Super Admin ID: 7409320181 (Max Payne)
-registerAdmin(bot, ['7409320181']);
+registerAdmin(bot, adminIds);
 
 bot.catch((err) => {
     const ctx = err.ctx;
