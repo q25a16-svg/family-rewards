@@ -33,7 +33,7 @@ fastify.get('/api/family/stats', async (request, reply) => {
             purchases: true
         }
     });
-    return users.map(u => ({
+    return users.map((u) => ({
         id: u.id,
         name: u.name,
         telegramId: u.telegramId,
